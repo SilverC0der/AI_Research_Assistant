@@ -88,18 +88,23 @@ class ExtractionService:
         Reference: https://docs.openalex.org/api-entities/works/work-object#best_oa_location
         """
         best_oa = work.get("best_oa_location")
-        if not best_oa:
-            return None
+        if best_oa:
+            # Prefer direct PDF if available
+            pdf_url = best_oa.get("pdf_url")
+            if pdf_url:
+                return pdf_url
 
-        # Prefer direct PDF if available
-        pdf_url = best_oa.get("pdf_url")
-        if pdf_url:
-            return pdf_url
+            # Fall back to landing page (publisher's open-access page)
+            landing_page = best_oa.get("landing_page_url")
+            if landing_page:
+                return landing_page
 
-        # Fall back to landing page (publisher's open-access page)
-        landing_page = best_oa.get("landing_page_url")
-        if landing_page:
-            return landing_page
+        # Fallback to content_urls if best_oa_location not available
+        content_urls = work.get("content_urls")
+        if content_urls:
+            pdf_url = content_urls.get("pdf")
+            if pdf_url:
+                return pdf_url
 
         return None
 

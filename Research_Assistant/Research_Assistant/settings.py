@@ -21,6 +21,10 @@ environ.Env.read_env(BASE_DIR / ".env")
 
 OPENALEX_EMAIL = env("OPENALEX_EMAIL")
 OPENALEX_API_KEY = env("OPENALEX_API_KEY", default=None)
+OPENROUTER_API_KEY = env("OPENROUTER_API_KEY")
+OPENROUTER_TIMEOUT_SECONDS = 30
+OPENROUTER_SITE_URL = env("OPENROUTER_SITE_URL", default="https://127.0.0.1:8080")
+OPENROUTER_SITE_NAME = "Research_AI_Assistant"
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/

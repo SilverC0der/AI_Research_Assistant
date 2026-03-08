@@ -1,6 +1,11 @@
 # Environments
 .env
 **/.env
+.env
+.env.local
+.env.*.local
+secrets.json
+**/.env
 
 # Virtual environments
 venv/
@@ -26,3 +31,40 @@ Thumbs.db
 # Windsurf
 .windsurf/
 .vscode/
+
+# Python testing and profiling
+.pytest_cache/
+.mypy_cache/
+htmlcov/
+coverage_html_report/
+*.prof
+pip-log.txt
+
+# Django
+db.sqlite3
+*.log
+media/
+staticfiles/
+
+# Package distribution
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Development environments
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Editor folders
+.vscode/
+.idea/
+.windsurf/
+
+# OS files
+.DS_Store
+.DS_Store?
+Thumbs.db
