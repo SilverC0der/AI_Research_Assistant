@@ -174,7 +174,7 @@ References
 [2]Goldberg, D.E. (1989) 'Genetic algorithms in search, optimization, and machine learning'. *Choice Reviews Online*.
 
 [3] Quinlan, J.R. (1993) 'C4.5: Programs for Machine Learning'. *Morgan Kaufmann*.
-
+````
 ### Test Coverage
 
 The test suite covers:
@@ -336,4 +336,3 @@ SOFTWARE.
 - [Django](https://www.djangoproject.com/) for the web framework
 - [pyalex](https://github.com/J535D165/pyalex) for the Python OpenAlex client
 - [OpenRouter](https://openrouter.ai/docs/quickstart) for the LLM API
-````
