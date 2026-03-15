@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django_ratelimit",
+    "corsheaders",
     "Research_AI_Assistant",
 ]
 
@@ -61,18 +62,25 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+# Security headers
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+
 ROOT_URLCONF = "Research_Assistant.urls"
 
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "Research_AI_Assistant/templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "django.template.context_processors.static",
             ],
         },
     },
@@ -127,6 +135,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
+STATICFILES_DIRS = [
+    BASE_DIR / "templates/static",
+]
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field

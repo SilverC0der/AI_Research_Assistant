@@ -27,7 +27,8 @@ def get_metadata(query, per_page=3):
     response = requests.get(url, params=params)
     response.raise_for_status()
     data = response.json()
-    return data["papers"]
+    papers = [p for p in data["papers"] if p.get("abstract")]
+    return papers
 
 def summarise_papers(query, papers):
     """Generate individual summaries for each paper."""
@@ -47,14 +48,24 @@ def summarise_papers(query, papers):
 def main():
     """Get user query and generate individual paper summaries."""
     if len(sys.argv) < 2:
-        print("Usage: python summarise.py \"your research query\"")
+        print("Usage: python summarise.py \"your research query\" [num_papers]")
+        print("num_papers: optional, minimum 5, default 5")
         return
     
     query = sys.argv[1]
     
+    num_papers = 5  # default
+    if len(sys.argv) > 2:
+        try:
+            num_papers = int(sys.argv[2])
+            if num_papers < 5:
+                num_papers = 5
+        except ValueError:
+            print("Invalid num_papers, using default 5")
+    
     try:
         # Get papers from OpenAlex
-        papers = get_metadata(query, per_page=5)
+        papers = get_metadata(query, per_page=num_papers)
         
         if not papers:
             print("No papers found for this query.")

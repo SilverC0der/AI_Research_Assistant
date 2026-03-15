@@ -34,23 +34,24 @@ class OpenAlexService:
         self,
         query: str,
         per_page: int = 25,
-        page: int = 1,
+        cursor: Optional[str] = None,
         exclude_retracted: bool = True,
         open_access_only: bool = False,
         oa_status: Optional[str] = None,
-    ) -> List[Dict]:
+    ) -> Dict:
         """
         Search for academic papers with optional filters.
 
         Args:
            query: Search query string
            per_page: Results per page (max 200)
+           cursor: Cursor for cursor-based pagination
            exclude_retracted: Filter out retracted papers (default: True)
            open_access_only: Return only open access papers (default: False)
            oa_status: Open access type filter - 'gold', 'green', 'hybrid', 'bronze' (default: None)
 
         Returns:
-           List of work objects from OpenAlex
+           Dict with keys: 'results', 'meta' containing pagination info
 
         Raises:
            OpenAlexAPIError: If API request fails
@@ -62,8 +63,6 @@ class OpenAlexService:
 
         if not isinstance(per_page, int) or per_page < 1 or per_page > 200:
             raise ValueError("per_page must be an integer between 1 and 200")
-        if not isinstance(page, int) or page < 1:
-            raise ValueError("page must be a positive integer")
 
         valid_oa_statuses = ["gold", "green", "hybrid", "bronze"]
         if oa_status is not None and oa_status not in valid_oa_statuses:
@@ -81,8 +80,16 @@ class OpenAlexService:
             if oa_status:
                 works_query = works_query.filter(oa_status=oa_status)
 
-            results = works_query.get(per_page=per_page, page=page)
-            return list(results)
+            # Use cursor pagination
+            results_list, meta = works_query.get(return_meta=True, per_page=per_page, cursor=cursor or "*")
+
+            return {
+                'results': list(results_list),
+                'meta': {
+                    'count': meta.get('count', 0),
+                    'next_cursor': meta.get('next_cursor')
+                }
+            }
 
         except Exception as e:
             logger.error(

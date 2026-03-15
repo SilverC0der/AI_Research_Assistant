@@ -20,19 +20,20 @@ OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # Default free model.
 # Browse free models at https://openrouter.ai/models?max_price=0
-DEFAULT_MODEL = "meta-llama/llama-3.3-70b-instruct:free"
+DEFAULT_MODEL = "arcee-ai/trinity-mini:free"
 
 # List of all available free models for fallback
 FREE_MODELS = [
-    "arcee-ai/trinity-mini:free",  # Primary (most reliable)
-    "nvidia/nemotron-nano-9b-v2:free",
-    "z-ai/glm-4.5-air:free",
-    "openai/gpt-oss-120b:free",
-    "stepfun/step-3.5-flash:free",
-    "qwen/qwen3-next-80b-a3b-instruct:free",
+    "arcee-ai/trinity-mini:free",
     "google/gemma-3-4b-it:free",
-    "meta-llama/llama-3.3-70b-instruct:free",
+    "nvidia/nemotron-nano-9b-v2:free",
+    "stepfun/step-3.5-flash:free",
+    "z-ai/glm-4.5-air:free",
     "nvidia/nemotron-3-nano-30b-a3b:free",
+    "qwen/qwen3-next-80b-a3b-instruct:free",
+    "meta-llama/llama-3.2-3b-instruct:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "openai/gpt-oss-120b:free",
 ]
 
 
@@ -86,7 +87,7 @@ class OpenRouterService:
         system_prompt: str,
         user_message: str,
         temperature: float = 0.3,
-        max_tokens: int = 2500,
+        max_tokens: int = 4000,
     ) -> str:
         """
         Send a chat completion request to OpenRouter with fallback model support.
@@ -101,8 +102,7 @@ class OpenRouterService:
             The model's reply as a plain string.
 
         Raises:
-            OpenRouterAPIError: On HTTP errors, malformed responses, or
-                                model-level error objects in the payload.
+            OpenRouterAPIError: On HTTP errors, malformed responses, or model-level error objects in the payload.
 
         Reference:
             https://openrouter.ai/docs/api/reference/overview#completions-request-format

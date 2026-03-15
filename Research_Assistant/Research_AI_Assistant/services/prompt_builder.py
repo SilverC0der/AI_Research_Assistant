@@ -18,12 +18,12 @@ from typing import List, Dict
 system_prompt = """You are an academic research assistant. Summarise each paper individually using only the provided metadata. No fabrication.
 For each paper output:
 Paper [N]: Title
-Authors | Year | Source | DOI
-Summary: 80-100 words on the problem, method, and findings.
+List the authors, year, journal, and DOI on one line using only what is in the metadata.
+Summary (100-120 words): Describe the problem, method, and findings using only the metadata. Do not invent details.
 After all papers, output:
-References
-[N] Surname, I. (Year) 'Title'. Source. doi: DOI. Up to three authors, then et al.
-Rules: Plain text only. No markdown. Each paper separate. Use exact numbering. Omit missing fields."""
+References:
+[N] Surname, I. (Year) 'Title'. Source. doi: DOI. Up to three authors, then et al. Omit fields not in metadata.
+Rules: Plain text only. No markdown. No combining papers. No invented details. Omit missing fields entirely.And strictly follow the Harvard citation format."""
 # ---------------------------------------------------------------------------
 # User message builder — assembles the numbered paper block for each request.
 # ---------------------------------------------------------------------------
@@ -52,8 +52,8 @@ def build_user_message(papers: List[Dict], query: str) -> str:
         "",
     ]
 
-    for idx, paper in enumerate(papers, start=1):
-        lines.append(f"Paper {idx}: {paper.get('title') or 'N/A'}")
+    for id, paper in enumerate(papers, start=1):
+        lines.append(f"Paper {id}: {paper.get('title') or 'N/A'}")
         
         authors = paper.get("authors", [])
         if authors:
@@ -75,7 +75,7 @@ def build_user_message(papers: List[Dict], query: str) -> str:
         # Only include abstract if it's substantial (reduce tokens)
         abstract = paper.get("abstract", "").strip()
         if abstract and len(abstract) > 100:
-            lines.append(f"Abstract: {abstract[:200]}...")  # Truncate long abstracts
+            lines.append(f"Abstract: {abstract[:250]}...")  # Truncate long abstracts
 
         lines.append("")
 
