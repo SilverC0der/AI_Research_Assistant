@@ -33,15 +33,15 @@ A comprehensive Django-based web application that serves as an AI-powered resear
 
 ### Year Filter Selection
 
-![Year Filter 1](templates/images/Filter%201.png)
+![Year Filter 1](templates/images/Filter1.png)
 
 ### Filter Options
 
-![Year Filter 2](templates/images/Filter%202.png)
+![Year Filter 2](templates/images/Filter2.png)
 
 ### Research Response View
 
-![Response Page](templates/images/Response%20Page.png)
+![Response Page](templates/images/ResponsePage.png)
 
 ## 🛠️ Technology Stack
 

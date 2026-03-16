@@ -68,3 +68,6 @@ __pycache__/
 .DS_Store
 .DS_Store?
 Thumbs.db
+
+# Git executable file
+git
