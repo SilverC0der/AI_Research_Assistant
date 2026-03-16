@@ -85,39 +85,27 @@
             <div class="filters-section">
               <div class="filters-container">
                 <div class="year-range">
-                  <label class="filter-label">YEARS</label>
-                  <div class="year-sliders">
-                    <div class="slider-group">
-                      <div class="slider-labels">
-                        <span>1900</span>
-                        <span id="minYearDisplay" class="year-display"
-                          >2015</span
-                        >
-                      </div>
-                      <input
-                        type="range"
-                        id="minYear"
-                        min="1900"
-                        max="2026"
-                        oninput="updateYearLabels()"
-                        class="year-slider"
-                      />
+                  <label class="filter-label">YEAR FILTER</label>
+                  <div class="year-slider-single">
+                    <div class="slider-labels">
+                      <span>1900</span>
+                      <span>2026</span>
                     </div>
-                    <div class="slider-group">
-                      <div class="slider-labels">
-                        <span id="maxYearDisplay" class="year-display"
-                          >2026</span
-                        >
-                        <span>2026</span>
-                      </div>
+                    <div class="slider-container">
                       <input
                         type="range"
-                        id="maxYear"
+                        id="yearFilter"
                         min="1900"
                         max="2026"
-                        oninput="updateYearLabels()"
+                        value="2026"
+                        oninput="updateYearLabel()"
                         class="year-slider"
                       />
+                      <div id="sliderTooltip" class="slider-tooltip">2026</div>
+                    </div>
+                    <div class="slider-description">
+                      Show papers published up to
+                      <span id="yearValue">2026</span>
                     </div>
                   </div>
                 </div>
@@ -160,11 +148,6 @@
             <h2>Your Research Binders</h2>
             <div id="binderCount" class="binder-count">0 active</div>
           </div>
-
-          <button onclick="addNewBinder()" class="new-binder-button">
-            <i class="fa-solid fa-plus"></i>
-            <span>NEW BINDER</span>
-          </button>
         </div>
 
         <div id="bindersContainer" class="binders-container">
@@ -277,6 +260,41 @@
       </div>
     </div>
 
-    <script src="{% static 'scripts.js' %}"></script>
+    <script src="{% static 'scripts.js' %}?v=20260316-3"></script>
+    <script>
+      // Simple console test for load more functionality
+      console.log(
+        '� To test load more: search for "machine learning" with 5 papers, then check for load more button',
+      );
+      console.log(
+        "💡 If button doesn't appear, run: testLoadMore() in console",
+      );
+
+      function testLoadMore() {
+        console.log("🧪 Testing load more button...");
+        const container = document.getElementById("loadMoreContainer");
+        const btn = document.getElementById("loadMoreBtn");
+
+        console.log("Container found:", !!container);
+        console.log("Button found:", !!btn);
+        console.log("AppState:", window.appState);
+
+        if (window.appState) {
+          console.log("Next cursor:", window.appState.nextCursor);
+          console.log("Total count:", window.appState.totalCount);
+          console.log("Is loading more:", window.appState.isLoadingMore);
+        }
+
+        if (
+          (container && !container.style.display) ||
+          container.style.display === "none"
+        ) {
+          container.style.display = "flex";
+          console.log("✅ Forced container to show");
+        }
+      }
+
+      window.testLoadMore = testLoadMore;
+    </script>
   </body>
 </html>

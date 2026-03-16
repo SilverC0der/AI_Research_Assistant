@@ -16,8 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
       this.lastLLMCall = 0; // Rate limiting for OpenRouter
       this.searchParams = {
         query: "",
-        mode: "best_match",
-        minYear: "2015",
+        mode: "open_access",
         maxYear: "2026",
         perPage: 5,
       };
@@ -38,10 +37,9 @@ document.addEventListener("DOMContentLoaded", () => {
         searchButton: document.querySelector(".search-button"),
 
         // Filter elements
-        minYear: document.getElementById("minYear"),
-        maxYear: document.getElementById("maxYear"),
-        minYearDisplay: document.getElementById("minYearDisplay"),
-        maxYearDisplay: document.getElementById("maxYearDisplay"),
+        yearFilter: document.getElementById("yearFilter"),
+        yearValue: document.getElementById("yearValue"),
+        sliderTooltip: document.getElementById("sliderTooltip"),
         searchBy: document.getElementById("searchBy"),
         quota: document.getElementById("quota"),
 
@@ -98,14 +96,23 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       // Filter listeners
-      if (elements.minYear)
-        elements.minYear.addEventListener("input", () =>
-          this.updateYearLabels(),
+      if (elements.yearFilter) {
+        elements.yearFilter.addEventListener("input", () =>
+          this.updateYearLabel(),
         );
-      if (elements.maxYear)
-        elements.maxYear.addEventListener("input", () =>
-          this.updateYearLabels(),
+        elements.yearFilter.addEventListener("mousedown", () =>
+          this.showTooltip(),
         );
+        elements.yearFilter.addEventListener("mouseup", () =>
+          this.hideTooltip(),
+        );
+        elements.yearFilter.addEventListener("touchstart", () =>
+          this.showTooltip(),
+        );
+        elements.yearFilter.addEventListener("touchend", () =>
+          this.hideTooltip(),
+        );
+      }
 
       // Research view listeners
       if (elements.researchSendBtn) {
@@ -265,6 +272,7 @@ document.addEventListener("DOMContentLoaded", () => {
         color: "#" + Math.floor(Math.random() * 16777215).toString(16),
         messages: [{ role: "user", content: query }],
         papers: [],
+        additionalPapers: [],
       };
 
       this.generateResearchResponse();
@@ -463,23 +471,43 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    updateYearLabels() {
-      if (!this.elements.minYear || !this.elements.maxYear) return;
+    updateYearLabel() {
+      if (!this.elements.yearFilter) return;
 
-      const minVal = parseInt(this.elements.minYear.value);
-      const maxVal = parseInt(this.elements.maxYear.value);
+      const year = parseInt(this.elements.yearFilter.value);
 
-      if (minVal > maxVal) {
-        this.elements.minYear.value = maxVal;
+      if (this.elements.yearValue) {
+        this.elements.yearValue.textContent = year;
       }
 
-      if (this.elements.minYearDisplay) {
-        this.elements.minYearDisplay.textContent = this.elements.minYear.value;
+      if (this.elements.sliderTooltip) {
+        this.elements.sliderTooltip.textContent = year;
+        this.updateTooltipPosition();
       }
+    }
 
-      if (this.elements.maxYearDisplay) {
-        this.elements.maxYearDisplay.textContent = this.elements.maxYear.value;
+    showTooltip() {
+      if (this.elements.sliderTooltip) {
+        this.elements.sliderTooltip.classList.add("show");
+        this.updateTooltipPosition();
       }
+    }
+
+    hideTooltip() {
+      if (this.elements.sliderTooltip) {
+        this.elements.sliderTooltip.classList.remove("show");
+      }
+    }
+
+    updateTooltipPosition() {
+      if (!this.elements.yearFilter || !this.elements.sliderTooltip) return;
+
+      const slider = this.elements.yearFilter;
+      const tooltip = this.elements.sliderTooltip;
+      const percent = (slider.value - slider.min) / (slider.max - slider.min);
+      const offset = percent * slider.offsetWidth;
+      
+      tooltip.style.left = `${offset}px`;
     }
 
     async retrieveFromBackend(
@@ -488,11 +516,22 @@ document.addEventListener("DOMContentLoaded", () => {
       maxYear,
       sortPref,
       maxPapers,
+      randomSeed = null,
       cursor = null,
     ) {
       // Use cursor pagination if provided, otherwise start from beginning
       const cursorParam = cursor ? `&cursor=${encodeURIComponent(cursor)}` : "";
-      const url = `/api/search/?q=${encodeURIComponent(query)}&mode=${sortPref}&per_page=${Math.min(maxPapers, 50)}${cursorParam}`;
+      const seedParam = randomSeed ? `&random_seed=${randomSeed}` : "";
+      
+      // Handle single year filter: if minYear is null, only use max_year
+      let yearParams;
+      if (minYear === null || minYear === undefined) {
+        yearParams = `&max_year=${maxYear}`;
+      } else {
+        yearParams = `&min_year=${minYear}&max_year=${maxYear}`;
+      }
+      
+      const url = `/api/search/?q=${encodeURIComponent(query)}&mode=${sortPref}&per_page=${Math.min(maxPapers, 50)}${yearParams}${cursorParam}${seedParam}`;
 
       const response = await fetch(url);
       if (!response.ok)
@@ -523,28 +562,27 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
 
       try {
-        const minYear = this.elements.minYear?.value || "2015";
-        const maxYear = this.elements.maxYear?.value || "2026";
-        const sortPref = this.elements.searchBy?.value || "most-cited";
-        const maxPapers = parseInt(this.elements.quota?.value || "5");
-
         const lastUserQuery =
           appState.currentResearchBinder.messages[
             appState.currentResearchBinder.messages.length - 1
           ].content;
 
+        // Always search for papers with a new random seed for each query
+        const maxYear = this.elements.yearFilter?.value || "2026";
+        const sortPref = this.elements.searchBy?.value || "best_match";
+        const maxPapers = parseInt(this.elements.quota?.value || "5");
+
         // Store search parameters for load more functionality
         appState.searchParams = {
           query: lastUserQuery,
           mode: sortPref,
-          minYear: minYear,
           maxYear: maxYear,
           perPage: maxPapers,
         };
 
         const searchData = await this.retrieveFromBackend(
           lastUserQuery,
-          minYear,
+          null, // minYear - not needed for single filter
           maxYear,
           sortPref,
           maxPapers,
@@ -554,14 +592,16 @@ document.addEventListener("DOMContentLoaded", () => {
         appState.nextCursor = searchData.next_cursor;
         appState.totalCount = searchData.total_count;
 
-        // Update UI with pagination info
-        this.updatePaginationInfo();
-
+        // Replace papers with new search results
         appState.currentResearchBinder.papers = searchData.papers;
+        const papersToUse = searchData.papers;
 
         if (searchData.papers.length > 0) {
           this.renderPaperCards(searchData.papers, container);
         }
+
+        // Update UI with pagination info after papers are rendered
+        this.updatePaginationInfo();
 
         // Apply rate limiting before LLM call
         await this.waitForRateLimit();
@@ -574,7 +614,7 @@ document.addEventListener("DOMContentLoaded", () => {
           },
           body: JSON.stringify({
             query: lastUserQuery,
-            papers: searchData.papers,
+            papers: papersToUse,
           }),
         });
 
@@ -591,6 +631,9 @@ document.addEventListener("DOMContentLoaded", () => {
           role: "assistant",
           content: summary,
         });
+
+        // Ensure load more visibility is refreshed after the assistant response renders
+        this.updatePaginationInfo();
 
         // Show save button for temporary binders
         if (appState.currentResearchBinder.id.startsWith("temp-")) {
@@ -611,7 +654,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async loadMorePapers() {
       if (!appState.nextCursor || appState.isLoadingMore) return;
-
+      
       appState.isLoadingMore = true;
       const btn = this.elements.loadMoreBtn;
       const status = this.elements.loadMoreStatus;
@@ -619,9 +662,15 @@ document.addEventListener("DOMContentLoaded", () => {
       if (btn) btn.disabled = true;
       if (status) status.textContent = "Loading more papers...";
 
+      // Ensure button remains visible during loading
+      if (this.elements.loadMoreContainer) {
+        this.elements.loadMoreContainer.style.display = "flex";
+      }
+
       try {
+        const perPage = appState.searchParams?.perPage || 25;
         const response = await fetch(
-          `/api/search/?q=${encodeURIComponent(appState.searchParams.query)}&mode=${appState.searchParams.mode}&cursor=${encodeURIComponent(appState.nextCursor)}&per_page=25`,
+          `/api/search/?q=${encodeURIComponent(appState.searchParams.query)}&mode=${appState.searchParams.mode}&cursor=${encodeURIComponent(appState.nextCursor)}&load_more=true&per_page=${perPage}&max_year=${appState.searchParams.maxYear}`,
         );
 
         if (!response.ok) {
@@ -630,28 +679,174 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const data = await response.json();
 
-        // Append new papers
-        appState.currentResearchBinder.papers.push(...data.papers);
+        // Update cursor for next load
         appState.nextCursor = data.next_cursor;
 
-        // Render additional papers
+        // Render additional papers in separate section
         this.renderAdditionalPapers(data.papers);
 
-        // Update pagination info
+        // Store additional papers separately
+        if (!appState.currentResearchBinder.additionalPapers) {
+          appState.currentResearchBinder.additionalPapers = [];
+        }
+        appState.currentResearchBinder.additionalPapers.push(...data.papers);
+
+        // Summarize additional papers
+        try {
+          await this.waitForRateLimit();
+
+          const summariseResponse = await fetch("/api/summarise/", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": csrfToken,
+            },
+            body: JSON.stringify({
+              query: appState.searchParams.query,
+              papers: data.papers,
+            }),
+          });
+
+          if (!summariseResponse.ok) {
+            const err = await summariseResponse.json();
+            throw new Error(
+              err.error || `Summarise error ${summariseResponse.status}`,
+            );
+          }
+
+          const summariseData = await summariseResponse.json();
+          const summary = summariseData.summary || "No summary returned.";
+
+          // Add label for summary
+          const labelDiv = document.createElement("div");
+          labelDiv.textContent = "Summary of Additional Papers";
+          labelDiv.className = "summary-label";
+          this.elements.researchChatContainer.appendChild(labelDiv);
+
+          // Add summary as assistant message
+          const summaryDiv = this.addMessage(
+            "",
+            false,
+            this.elements.researchChatContainer,
+          );
+          summaryDiv.innerHTML = this.markdownToHtml(summary);
+          summaryDiv.style.opacity = "1";
+        } catch (err) {
+          console.warn("Summary of additional papers failed:", err);
+
+          // Show user-friendly error message but continue the flow
+          const errorDiv = document.createElement("div");
+          errorDiv.className = "summary-error-message";
+          errorDiv.style.cssText = `
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            margin: 1rem 0;
+            color: #fca5a5;
+            font-size: 0.875rem;
+            text-align: center;
+          `;
+          errorDiv.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+              <span>⚠️</span>
+              <span>Summary temporarily unavailable - papers loaded successfully</span>
+            </div>
+            <button id="retry-summary-${Date.now()}" style="
+              background: rgba(239, 68, 68, 0.2);
+              border: 1px solid rgba(239, 68, 68, 0.3);
+              color: #fca5a5;
+              padding: 0.25rem 0.75rem;
+              border-radius: 0.25rem;
+              font-size: 0.75rem;
+              cursor: pointer;
+              margin-top: 0.5rem;
+            ">Retry Summary</button>
+          `;
+          this.elements.researchChatContainer.appendChild(errorDiv);
+
+          // Add retry functionality
+          const retryBtn = errorDiv.querySelector("button");
+          if (retryBtn) {
+            retryBtn.onclick = async () => {
+              retryBtn.textContent = "Retrying...";
+              retryBtn.disabled = true;
+              try {
+                await this.waitForRateLimit();
+
+                const retryResponse = await fetch("/api/summarise/", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken,
+                  },
+                  body: JSON.stringify({
+                    query: appState.searchParams.query,
+                    papers: data.papers,
+                  }),
+                });
+
+                if (retryResponse.ok) {
+                  const retryData = await retryResponse.json();
+                  const summary = retryData.summary || "No summary returned.";
+
+                  // Replace error message with successful summary
+                  errorDiv.remove();
+
+                  // Add label for summary
+                  const labelDiv = document.createElement("div");
+                  labelDiv.textContent = "Summary of Additional Papers";
+                  labelDiv.className = "summary-label";
+                  this.elements.researchChatContainer.appendChild(labelDiv);
+
+                  // Add summary as assistant message
+                  const summaryDiv = this.addMessage(
+                    "",
+                    false,
+                    this.elements.researchChatContainer,
+                  );
+                  summaryDiv.innerHTML = this.markdownToHtml(summary);
+                  summaryDiv.style.opacity = "1";
+                } else {
+                  throw new Error("Retry failed");
+                }
+              } catch (retryErr) {
+                retryBtn.textContent = "Retry Failed";
+                retryBtn.disabled = false;
+                console.warn("Summary retry failed:", retryErr);
+              }
+            };
+          }
+
+          // Continue without breaking the load more flow
+          console.log("Load more flow continuing despite summary failure");
+        }
+
+        // Update pagination info after successful load
         this.updatePaginationInfo();
 
-        // Hide button if no more results
-        if (!data.next_cursor) {
-          if (this.elements.loadMoreContainer) {
-            this.elements.loadMoreContainer.style.display = "none";
-          }
+        // Show message if available (e.g., "No more papers available")
+        if (data.message) {
+          const messageDiv = document.createElement("div");
+          messageDiv.textContent = data.message;
+          messageDiv.className = "load-more-message";
+          messageDiv.style.textAlign = "center";
+          messageDiv.style.color = "#9ca3af";
+          messageDiv.style.marginTop = "1rem";
+          messageDiv.style.fontSize = "0.875rem";
+          this.elements.researchChatContainer.appendChild(messageDiv);
         }
       } catch (err) {
         if (status) status.textContent = `Error: ${err.message}`;
+        // Still update pagination info even on error to show correct state
+        this.updatePaginationInfo();
       } finally {
         appState.isLoadingMore = false;
         if (btn) btn.disabled = false;
         if (status) status.textContent = "";
+        
+        // Final pagination update to ensure button visibility is correct
+        this.updatePaginationInfo();
       }
     }
 
@@ -668,8 +863,29 @@ document.addEventListener("DOMContentLoaded", () => {
       appState.lastLLMCall = Date.now();
     }
 
+    ensureElements() {
+      // Re-cache elements if they're missing
+      if (!this.elements.loadMoreContainer) {
+        this.elements.loadMoreContainer =
+          document.getElementById("loadMoreContainer");
+      }
+      if (!this.elements.loadMoreBtn) {
+        this.elements.loadMoreBtn = document.getElementById("loadMoreBtn");
+      }
+      if (!this.elements.researchChatContainer) {
+        this.elements.researchChatContainer = document.getElementById(
+          "researchChatContainer",
+        );
+      }
+    }
+
     updatePaginationInfo() {
-      const currentCount = appState.currentResearchBinder.papers?.length || 0;
+      // Ensure elements are available
+      this.ensureElements();
+
+      const originalPapers = appState.currentResearchBinder.papers?.length || 0;
+      const additionalPapers = appState.currentResearchBinder.additionalPapers?.length || 0;
+      const totalLoaded = originalPapers + additionalPapers;
       const totalCount = appState.totalCount;
 
       // Find or create pagination info element
@@ -677,21 +893,37 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!infoElement) {
         infoElement = document.createElement("div");
         infoElement.className = "pagination-info";
-        this.elements.researchChatContainer.appendChild(infoElement);
+        if (this.elements.researchChatContainer) {
+          this.elements.researchChatContainer.appendChild(infoElement);
+        }
       }
 
-      infoElement.innerHTML = `
-        <div class="pagination-text">
-          Showing ${currentCount} of ${totalCount.toLocaleString()} papers
-          ${appState.nextCursor ? `(more available)` : "(all loaded)"}
-        </div>
-      `;
+      if (infoElement) {
+        infoElement.innerHTML = `
+          <div class="pagination-text">
+            Showing ${totalLoaded} of ${totalCount.toLocaleString()} papers
+            ${appState.nextCursor ? `(more available)` : "(all loaded)"}
+          </div>
+        `;
+      }
 
-      // Show or hide load more button based on nextCursor
+      // Show or hide load more button based on nextCursor and loading state
+      // Keep button visible as long as there are more papers to load
       if (this.elements.loadMoreContainer) {
-        if (appState.nextCursor && !appState.isLoadingMore) {
+        const hasMore = appState.nextCursor && !appState.isLoadingMore;
+        
+        if (hasMore) {
+          this.elements.loadMoreContainer.style.display = "flex";
+          // Ensure button has click handler
+          const loadBtn = document.getElementById("loadMoreBtn");
+          if (loadBtn && !loadBtn.onclick) {
+            loadBtn.onclick = () => this.loadMorePapers();
+          }
+        } else if (appState.isLoadingMore) {
+          // Keep button visible during loading
           this.elements.loadMoreContainer.style.display = "flex";
         } else {
+          // Only hide when we know there are no more papers AND not loading
           this.elements.loadMoreContainer.style.display = "none";
         }
       }
@@ -700,23 +932,19 @@ document.addEventListener("DOMContentLoaded", () => {
     renderAdditionalPapers(papers) {
       if (!papers?.length) return;
 
-      // Find existing papers grid or create new one
-      let papersContainer =
-        this.elements.researchChatContainer.querySelector(".papers-grid");
-      if (!papersContainer) {
-        papersContainer = document.createElement("div");
-        papersContainer.className = "papers-grid mt-4 mb-4";
-        papersContainer.innerHTML =
-          '<div class="papers-grid-title mb-3">RELEVANT PAPERS</div>';
-        this.elements.researchChatContainer.appendChild(papersContainer);
-      }
+      // Create a new separate papers section for loaded more papers
+      const papersContainer = document.createElement("div");
+      papersContainer.className = "papers-grid mt-4 mb-4";
+      papersContainer.innerHTML =
+        '<div class="papers-grid-title mb-3">ADDITIONAL PAPERS</div>';
 
       papers.forEach((paper, i) => {
-        const existingCount =
-          papersContainer.querySelectorAll(".paper-card").length;
-        const paperCard = this.createPaperCard(paper, existingCount + i);
+        const paperCard = this.createPaperCard(paper, i);
         papersContainer.appendChild(paperCard);
       });
+
+      // Add the new section to the chat container
+      this.elements.researchChatContainer.appendChild(papersContainer);
     }
 
     // ==================== UTILITY METHODS ====================
@@ -877,18 +1105,6 @@ document.addEventListener("DOMContentLoaded", () => {
       colorPicker.click();
     }
 
-    addNewBinder() {
-      const newBinder = {
-        id: Date.now(),
-        name: "New Research Binder",
-        color: "#" + Math.floor(Math.random() * 16777215).toString(16),
-        messages: [],
-      };
-      appState.binders.push(newBinder);
-      this.renderBinders();
-      setTimeout(() => this.openBinder(newBinder.id), 80);
-    }
-
     // ==================== BACKWARDS COMPATIBILITY ====================
     generateAssistantResponse(binder, container) {
       // This method is kept for backwards compatibility with modal system
@@ -903,8 +1119,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Similar implementation to generateResearchResponse but for modal
       async function generateResponse() {
         try {
-          const minYear = domManager.elements.minYear?.value || "2015";
-          const maxYear = domManager.elements.maxYear?.value || "2026";
+          const maxYear = domManager.elements.yearFilter?.value || "2026";
           const sortPref = domManager.elements.searchBy?.value || "most-cited";
           const maxPapers = parseInt(domManager.elements.quota?.value || "5");
 
@@ -912,7 +1127,7 @@ document.addEventListener("DOMContentLoaded", () => {
             binder.messages[binder.messages.length - 1].content;
           const papers = await domManager.retrieveFromBackend(
             lastUserQuery,
-            minYear,
+            null, // minYear - not needed for single filter
             maxYear,
             sortPref,
             maxPapers,
@@ -986,14 +1201,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function resetFilters() {
     if (domManager) {
-      if (domManager.elements.minYear)
-        domManager.elements.minYear.value = "2015";
-      if (domManager.elements.maxYear)
-        domManager.elements.maxYear.value = "2026";
+      if (domManager.elements.yearFilter)
+        domManager.elements.yearFilter.value = "2026";
       if (domManager.elements.searchBy)
         domManager.elements.searchBy.value = "best_match";
       if (domManager.elements.quota) domManager.elements.quota.value = "5";
-      domManager.updateYearLabels();
+      domManager.updateYearLabel();
     }
   }
 
@@ -1013,10 +1226,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function addNewBinder() {
-    if (domManager) domManager.addNewBinder();
-  }
-
   function saveBinderName(binderId, newName) {
     if (domManager) domManager.saveBinderName(binderId, newName);
   }
@@ -1032,7 +1241,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Initial render
     domManager.renderBinders();
-    domManager.updateYearLabels();
+    domManager.updateYearLabel();
 
     console.log("🧠 BRAIN AI Research Assistant initialized");
   }

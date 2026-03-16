@@ -446,6 +446,41 @@ body {
   accent-color: white;
 }
 
+.slider-container {
+  position: relative;
+  width: 100%;
+}
+
+.slider-tooltip {
+  position: absolute;
+  top: -30px;
+  background: #6366f1;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  pointer-events: none;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  white-space: nowrap;
+}
+
+.slider-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: #6366f1;
+}
+
+.slider-tooltip.show {
+  opacity: 1;
+}
+
 .filter-dropdown {
   min-width: 150px;
 }

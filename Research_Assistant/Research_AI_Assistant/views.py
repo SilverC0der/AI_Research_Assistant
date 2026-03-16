@@ -49,7 +49,7 @@ def search(request):
     """
     Search academic papers via OpenAlex with ranking modes and pagination.
 
-    GET /api/search/?q=<query>&mode=<mode>&per_page=<int>&page=<int>&cursor=<str>&oa_status=<status>
+    GET /api/search/?q=<query>&mode=<mode>&per_page=<int>&page=<int>&cursor=<str>&oa_status=<status>&min_year=<int>&max_year=<int>&random_seed=<int>
 
     Query params:
         q (required): keyword search string
@@ -58,6 +58,8 @@ def search(request):
         page (optional): page number for basic pagination (default: 1)
         cursor (optional): cursor for advanced pagination (overrides page)
         oa_status (optional): gold | green | hybrid | bronze
+        min_year (optional): minimum publication year (default: None)
+        max_year (optional): maximum publication year (default: None)
 
     Returns JSON:
     {
@@ -81,6 +83,9 @@ def search(request):
     per_page_raw = request.GET.get("per_page", "25")
     cursor = request.GET.get("cursor", None)
     oa_status = request.GET.get("oa_status", None)
+    min_year_raw = request.GET.get("min_year", None)
+    max_year_raw = request.GET.get("max_year", None)
+    random_seed_raw = request.GET.get("random_seed", None)
 
     # Validate query
     if not query:
@@ -104,11 +109,50 @@ def search(request):
     except (ValueError, TypeError):
         per_page = 25
 
+    # Parse load_more parameter
+    load_more_raw = request.GET.get("load_more", "false").lower()
+    load_more = load_more_raw in ("true", "1", "yes", "on")
+
+    # Validate load_more: if true, cursor is required
+    if load_more and not cursor:
+        return JsonResponse({"error": "cursor parameter is required when load_more=true"}, status=400)
+
+    # Validate and parse year parameters
+    min_year = None
+    max_year = None
+    
+    if min_year_raw is not None:
+        try:
+            min_year = int(min_year_raw)
+            if min_year < 1900 or min_year > 2026:
+                return JsonResponse({"error": "min_year must be between 1900 and 2026"}, status=400)
+        except (ValueError, TypeError):
+            return JsonResponse({"error": "min_year must be a valid integer"}, status=400)
+    
+    if max_year_raw is not None:
+        try:
+            max_year = int(max_year_raw)
+            if max_year < 1900 or max_year > 2026:
+                return JsonResponse({"error": "max_year must be between 1900 and 2026"}, status=400)
+        except (ValueError, TypeError):
+            return JsonResponse({"error": "max_year must be a valid integer"}, status=400)
+    
+    if min_year is not None and max_year is not None and min_year > max_year:
+        return JsonResponse({"error": "min_year cannot be greater than max_year"}, status=400)
+
+    # Parse random_seed parameter
+    random_seed = None
+    if random_seed_raw is not None:
+        try:
+            random_seed = int(random_seed_raw)
+        except (ValueError, TypeError):
+            random_seed = None
+
     # Map mode to OpenAlexService parameters
     open_access_only = mode == "open_access"
 
     logger.info(
-        "Search request: query='%s' mode='%s' per_page=%d", query, mode, per_page
+        "Search request: query='%s' mode='%s' per_page=%d load_more=%s", query, mode, per_page, load_more
     )
 
     try:
@@ -119,6 +163,9 @@ def search(request):
             cursor=cursor,
             open_access_only=open_access_only,
             oa_status=oa_status,
+            min_year=min_year,
+            max_year=max_year,
+            random_seed=random_seed,
         )
         
         raw_results = api_response.get('results', [])
@@ -145,6 +192,10 @@ def search(request):
     except Exception:
         logger.warning("Failed to write QueryLog entry.", exc_info=True)
 
+    message = None
+    if next_cursor is None:
+        message = "No more papers available"
+
     return JsonResponse(
         {
             "papers": papers,
@@ -155,6 +206,7 @@ def search(request):
             "has_more": next_cursor is not None,
             "mode": mode,
             "query": query,
+            "message": message,
         }
     )
 
@@ -278,10 +330,18 @@ def summarise(request):
 
     except OpenRouterAPIError as exc:
         logger.error("OpenRouter summarise error: %s", exc)
-        return JsonResponse({"error": "Service temporarily unavailable"}, status=503)
+        return JsonResponse({
+            "error": "Service temporarily unavailable", 
+            "error_code": "OPENROUTER_API_ERROR",
+            "message": "Summary service temporarily unavailable - please try again later"
+        }, status=503)
     except Exception as exc:
         logger.error("Unexpected error in summarise: %s", exc, exc_info=True)
-        return JsonResponse({"error": "Internal server error"}, status=500)
+        return JsonResponse({
+            "error": "Internal server error",
+            "error_code": "INTERNAL_ERROR", 
+            "message": "An unexpected error occurred"
+        }, status=500)
 
 
 @require_GET
@@ -359,5 +419,3 @@ def search_authors(request):
     except OpenAlexAPIError as exc:
         logger.error("OpenAlex author search error: %s", exc)
         return JsonResponse({"error": str(exc)}, status=502)
-
-
