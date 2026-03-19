@@ -25,14 +25,10 @@ Year: [year from metadata]
 Source: [source from metadata]
 DOI: [doi from metadata]
 Summary: [100-120 words describing the problem, method, and findings using only the metadata]
-
 Repeat this block for every paper. Do not combine papers. Omit a field only if it is absent from the metadata.
-
 After all paper blocks, output:
-
 References:
 [N] Surname, I. (Year) 'Title'. Source. doi: DOI.
-
 Use up to three authors, then et al. Omit fields not in metadata. Plain text only. No markdown."""
 # ---------------------------------------------------------------------------
 # User message builder — assembles the numbered paper block for each request.
@@ -85,7 +81,7 @@ def build_user_message(papers: List[Dict], query: str) -> str:
         # Only include abstract if it's substantial (reduce tokens)
         abstract = paper.get("abstract", "").strip()
         if abstract and len(abstract) > 100:
-            lines.append(f"Abstract: {abstract[:250]}...")  # Truncate long abstracts
+            lines.append(f"Abstract: {abstract[:500]}...")  # Truncate long abstracts
 
         lines.append("")
 

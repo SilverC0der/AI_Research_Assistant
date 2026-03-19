@@ -688,10 +688,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Update the binder in the binders array if it's an existing binder
         if (!appState.currentResearchBinder.id.startsWith("temp-")) {
-          const binderIndex = appState.binders.findIndex(b => b.id === appState.currentResearchBinder.id);
+          const binderIndex = appState.binders.findIndex(
+            (b) => b.id === appState.currentResearchBinder.id,
+          );
           if (binderIndex !== -1) {
             // Update the binder in the array with current state
-            appState.binders[binderIndex] = JSON.parse(JSON.stringify(appState.currentResearchBinder));
+            appState.binders[binderIndex] = JSON.parse(
+              JSON.stringify(appState.currentResearchBinder),
+            );
             this.renderBinders(); // Update binder display
           }
         }
@@ -739,19 +743,23 @@ document.addEventListener("DOMContentLoaded", () => {
           );
           summaryDiv.innerHTML = this.markdownToHtml(summary);
           summaryDiv.style.opacity = "1";
-          
+
           // Also add summary to messages array for persistence
           if (appState.currentResearchBinder) {
             appState.currentResearchBinder.messages.push({
               role: "assistant",
-              content: summary
+              content: summary,
             });
-            
+
             // Update binder in array if it's an existing binder
             if (!appState.currentResearchBinder.id.startsWith("temp-")) {
-              const binderIndex = appState.binders.findIndex(b => b.id === appState.currentResearchBinder.id);
+              const binderIndex = appState.binders.findIndex(
+                (b) => b.id === appState.currentResearchBinder.id,
+              );
               if (binderIndex !== -1) {
-                appState.binders[binderIndex] = JSON.parse(JSON.stringify(appState.currentResearchBinder));
+                appState.binders[binderIndex] = JSON.parse(
+                  JSON.stringify(appState.currentResearchBinder),
+                );
                 this.renderBinders(); // Update binder display
               }
             }
@@ -974,7 +982,33 @@ document.addEventListener("DOMContentLoaded", () => {
     markdownToHtml(text) {
       if (!text) return "";
 
-      return text
+      // Handle References section with proper formatting
+      let processedText = text.replace(
+        /^(References:\s*\n?)([\s\S]*?)/gm,
+        (match, header, references) => {
+          if (references && references.trim()) {
+            const refLines = references.trim().split('\n');
+            let refHtml = '';
+            for (let i = 0; i < refLines.length; i++) {
+              const line = refLines[i].trim();
+              if (line) {
+                refHtml += `<div style="margin-bottom: 0.5rem; line-height: 1.6;">${this.escapeHtml(line)}</div>`;
+              }
+            }
+            return `<div class="references-section">
+              <h4 style="color: #0f172a; font-size: 1.1rem; font-weight: 600; margin: 1.5rem 0 1rem; border-bottom: 2px solid #2563eb; padding-bottom: 0.5rem;">
+                📚 References
+              </h4>
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 1rem; margin-bottom: 1rem;">
+                ${refHtml}
+              </div>
+            </div>`;
+          }
+          return match;
+        }
+      );
+
+      return processedText
         .replace(/```(?:\s*\w+)?\s*\n([\s\S]*?)\n```/g, (match, p1) => {
           const code = this.escapeHtml(p1.trim());
           return `<pre class="code-block"><code>${code}</code></pre>`;
@@ -1239,17 +1273,17 @@ document.addEventListener("DOMContentLoaded", () => {
       if (domManager.elements.yearFilter) {
         domManager.elements.yearFilter.value = "2026";
       }
-      
+
       // Reset search by to default (best_match)
       if (domManager.elements.searchBy) {
         domManager.elements.searchBy.value = "best_match";
       }
-      
+
       // Reset quota to default (5 papers)
       if (domManager.elements.quota) {
         domManager.elements.quota.value = "5";
       }
-      
+
       // Update year label display
       domManager.updateYearLabel();
     }

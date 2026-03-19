@@ -40,6 +40,8 @@ class ExtractionService:
             "is_open_access": work.get("open_access", {}).get("is_oa", False),
             "oa_status": work.get("open_access", {}).get("oa_status"),
             "full_text_url": ExtractionService._extract_full_text_url(work),
+            "referenced_works": ExtractionService._extract_referenced_works(work),
+            "referenced_works_count": len(work.get("referenced_works", [])),
         }
 
     @staticmethod
@@ -107,6 +109,23 @@ class ExtractionService:
                 return pdf_url
 
         return None
+
+    @staticmethod
+    def _extract_referenced_works(work: Dict) -> List[str]:
+        """
+        Extract referenced works (papers that this paper cites).
+        Reference: https://docs.openalex.org/api-entities/works/work-object#referenced_works
+        
+        Returns: List of OpenAlex ID strings
+        """
+        referenced_works = work.get("referenced_works", [])
+        
+        # Handle missing or invalid referenced_works field
+        if not referenced_works or not isinstance(referenced_works, list):
+            return []
+        
+        # referenced_works contains OpenAlex ID strings, not objects with metadata
+        return referenced_works[:10]  # Limit to first 10 references
 
     @staticmethod
     def _extract_concepts(work: Dict) -> List[Dict]:
