@@ -65,6 +65,7 @@ def build_user_message(papers: List[Dict], query: str) -> str:
         if authors:
             author_strings = _format_author_list(authors)
             lines.append(f"Authors: {author_strings}")
+        
 
         year = paper.get('publication_year')
         if year:
@@ -80,7 +81,7 @@ def build_user_message(papers: List[Dict], query: str) -> str:
 
         # Only include abstract if it's substantial (reduce tokens)
         abstract = paper.get("abstract", "").strip()
-        if abstract and len(abstract) > 100:
+        if abstract:
             lines.append(f"Abstract: {abstract[:500]}...")  # Truncate long abstract lines
         else:
             lines.append("Abstract: Abstract not available - summary based on title and metadata only")
@@ -100,4 +101,6 @@ def _format_author_list(authors: List[Dict]) -> str:
     names = [a.get("name", "").strip() for a in authors if a.get("name")]
     if not names:
         return ""
+    if len(names) > 3:
+        return "; ".join(names[:3]) + " et al."
     return "; ".join(names)

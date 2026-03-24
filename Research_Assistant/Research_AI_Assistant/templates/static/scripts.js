@@ -1362,14 +1362,18 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function performSearch() {
-    console.log("performSearch called");
-    if (domManager) {
-      console.log("domManager exists, calling handleSearch");
-      domManager.handleSearch();
-    } else {
-      console.error("domManager not initialized yet");
-      alert("Application still loading. Please try again in a moment.");
+    if (!domManager || !domManager.elements) {
+      if (!performSearch.retryCount) performSearch.retryCount = 0;
+      if (performSearch.retryCount < 50) { // Max 5 seconds
+        performSearch.retryCount++;
+        setTimeout(performSearch, 100);
+        return;
+      }
+      alert("Application failed to load. Please refresh the page.");
+      return;
     }
+    performSearch.retryCount = 0; // Reset on success
+    domManager.handleSearch();
   }
 
   window.toggleProfileDropdown = toggleProfileDropdown;
