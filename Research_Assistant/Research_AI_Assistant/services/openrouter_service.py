@@ -22,7 +22,7 @@ OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # Default free model.
 # Browse free models at https://openrouter.ai/models?max_price=0
-DEFAULT_MODEL = "arcee-ai/trinity-mini:free"
+DEFAULT_MODEL = "meta-llama/llama-3.3-70b-instruct:free"
 
 # List of all available free models for fallback
 FREE_MODELS = [
